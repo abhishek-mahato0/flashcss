@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "rootDir": "src", // preserve src folder structure
+    "outDir": "dist/js", // JS output
+    "declaration": true,
+    "declarationDir": "dist/types", // type declarations
+    "emitDeclarationOnly": false, // emit JS as well
+    "module": "ESNext",
+    "target": "ESNext",
+    "moduleResolution": "node",
+    "strict": true,
+    "resolveJsonModule": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": ["vite/client", "node"]
+  },
+  "include": ["src/**/*"],
+  "exclude": ["node_modules"]
+}

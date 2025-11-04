@@ -1,0 +1,57 @@
+{
+  "name": "flashcss-vite",
+  "version": "0.1.8",
+  "description": "A super fast custom CSS engine plugin for Vite",
+  "main": "dist/js/index.js",
+  "types": "dist/types/index.d.ts",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "prepublishOnly": "npm run build"
+  },
+  "keywords": [
+    "vite",
+    "plugin",
+    "css",
+    "tailwind-alternative",
+    "mini-css"
+  ],
+  "author": "Abhishek Mahato",
+  "license": "MIT",
+  "devDependencies": {
+    "@types/node": "^24.5.2",
+    "typescript": "^5.9.2"
+  },
+  "peerDependencies": {
+    "vite": ">=4.0.0"
+  },
+  "dependencies": {
+    "diff": "^8.0.2",
+    "flashcss-vite": "^0.1.8",
+    "glob": "^11.0.3"
+  },
+  "exports": {
+    ".": {
+      "import": "./dist/js/index.js",
+      "require": "./dist/js/index.js",
+      "types": "./dist/types/index.d.ts"
+    },
+    "./plugin/mini-css-engine": {
+      "import": "./dist/js/plugin/mini-css-engine.js",
+      "require": "./dist/js/plugin/mini-css-engine.js",
+      "types": "./dist/types/plugin/mini-css-engine.d.ts"
+    },
+    "./plugin/client": {
+      "import": "./dist/js/plugin/client.js",
+      "require": "./dist/js/plugin/client.js",
+      "types": "./dist/types/plugin/client.d.ts"
+    },
+    "./core/extractClasses": {
+      "import": "./dist/js/core/extractClasses.js",
+      "require": "./dist/js/core/extractClasses.js",
+      "types": "./dist/types/core/extractClasses.d.ts"
+    }
+  }
+}
