@@ -48,10 +48,10 @@
       "require": "./dist/js/plugin/client.js",
       "types": "./dist/types/plugin/client.d.ts"
     },
-    "./core/extractClasses": {
-      "import": "./dist/js/core/extractClasses.js",
-      "require": "./dist/js/core/extractClasses.js",
-      "types": "./dist/types/core/extractClasses.d.ts"
+    "./core/utils": {
+      "import": "./dist/js/core/utils.js",
+      "require": "./dist/js/core/utils.js",
+      "types": "./dist/types/core/utils.d.ts"
     }
   }
 }

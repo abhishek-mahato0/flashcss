@@ -61,13 +61,19 @@ export function getOnlyChangedLines(
   newContent: string
 ): string {
   const diffs = diffLines(oldContent, newContent);
-  let changedLines: string = "";
+  let changedLines: string[] = [];
+  const classRegex = /\b(className|class)\s*=/;
   diffs.forEach((part) => {
     if (part.added) {
-      changedLines += part.value + "\n";
+      const lines = part.value.split(/\r?\n/);
+      for (const line of lines) {
+        if (line.trim() && classRegex.test(line)) {
+          changedLines.push(line);
+        }
+      }
     }
   });
-  return changedLines;
+  return changedLines.join("\n");
 }
 
 export const getFileLength = (content: string): number => {
