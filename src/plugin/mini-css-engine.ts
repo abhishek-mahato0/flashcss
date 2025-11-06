@@ -5,9 +5,10 @@ import path from "path";
 import fs from "fs";
 import {
   extractClasses,
-  extractClassesFromFile,
   extractClassesFromString,
-} from "../core/extractClasses.js";
+  getFileLength,
+  getOnlyChangedLines,
+} from "../core/utils.js";
 import { createEngine } from "../core/rules.js";
 import { fileURLToPath } from "url";
 
@@ -90,10 +91,25 @@ export default function flashCss(
       server.watcher.on("change", (file) => {
         if (!/\.(js|ts|jsx|tsx|vue|svelte|html)$/.test(file)) return [];
         const fileContent = fs.readFileSync(file, "utf-8");
-        const classes = extractClassesFromString(fileContent);
-        // Generate new CSS dynamically
-        const css = generateFor(classes);
-        if (!css) return [];
+        const oldContent = oldFileContent.get(file) || "";
+        let newCss = "";
+        if (oldContent) {
+          const changedLines = getOnlyChangedLines(oldContent, fileContent);
+          oldFileContent.set(file, fileContent);
+          if (changedLines.trim() !== "") {
+            const classes = extractClassesFromString(changedLines);
+            newCss = generateFor(classes);
+          }
+        } else {
+          const classes = extractClassesFromString(fileContent);
+          newCss = generateFor(classes);
+          const fileLength = getFileLength(fileContent);
+          if (fileLength > 50) {
+            oldFileContent.set(file, fileContent);
+          }
+        }
+
+        if (!newCss) return [];
 
         // Invalidate module to trigger reload
         const module = server.moduleGraph.getModuleById("/@custom.css");
