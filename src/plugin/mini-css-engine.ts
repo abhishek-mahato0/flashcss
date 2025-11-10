@@ -108,7 +108,6 @@ export default function flashCss(
             oldFileContent.set(file, fileContent);
           }
         }
-
         if (!newCss) return [];
 
         // Invalidate module to trigger reload

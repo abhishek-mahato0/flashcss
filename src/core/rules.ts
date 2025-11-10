@@ -1,24 +1,20 @@
 // src/core/rules.ts
-// src/core/rules.ts
 import { MiniCSSEngine, RuleBodyFn } from "./engine.js";
 
-export type BreakPointConfig = {
-  [key: string]: number; // key: prefix, value: min-width px
-};
+export type BreakPointConfig = { [key: string]: number };
+
 type VitePluginMiniCSSEngineOptions = {
   preDefinedClasses?: string[];
   breakpoints?: BreakPointConfig;
   colors?: Record<string, string>;
   fontSizes?: Record<string, string>;
   borderRadius?: Record<string, string>;
-  customRules?: Array<{
-    re: RegExp;
-    body: RuleBodyFn;
-  }>;
+  customRules?: Array<{ re: RegExp; body: RuleBodyFn }>;
   customVariants?: Array<{
     prefix: string;
     wrap: (cssBlock: string) => string;
   }>;
+  themes?: Record<string, string>; // Generic theme support
 };
 
 const defaultBreakpoints: BreakPointConfig = {
@@ -27,6 +23,7 @@ const defaultBreakpoints: BreakPointConfig = {
   lg: 1024,
   xl: 1280,
 };
+const baseRem = 16;
 
 function parseArbitrary(token: string) {
   const m = token.match(/\[([^\]]+)\]/);
@@ -35,133 +32,112 @@ function parseArbitrary(token: string) {
 
 export function createEngine(opt: VitePluginMiniCSSEngineOptions = {}) {
   const engine = new MiniCSSEngine();
-  const userBreakpoints: BreakPointConfig | undefined = opt.breakpoints;
+  const breakpoints = opt.breakpoints || defaultBreakpoints;
 
-  const breakpoints = userBreakpoints || defaultBreakpoints;
+  // Custom rules
+  (opt.customRules || []).forEach(({ re, body }) => engine.addRule(re, body));
 
-  //add custom rules first
-  (opt.customRules || []).forEach(({ re, body }) => {
-    engine.addRule(re, body);
+  // Spacing: margin and padding
+  const spaceProps = [
+    { prefix: "m", prop: "margin" },
+    { prefix: "p", prop: "padding" },
+  ];
+
+  const directions = {
+    "": "", // all sides
+    x: ["left", "right"],
+    y: ["top", "bottom"],
+    t: "top",
+    r: "right",
+    b: "bottom",
+    l: "left",
+  };
+
+  spaceProps.forEach(({ prefix, prop }) => {
+    Object.entries(directions).forEach(([dirKey, dirVal]) => {
+      // Numeric values
+      engine.addRule(
+        new RegExp(`^${prefix}${dirKey ? dirKey : ""}-(\\d+)$`),
+        (m) => {
+          const remValue = `${+m![1] / baseRem}rem`;
+          if (Array.isArray(dirVal)) {
+            return Object.fromEntries(
+              dirVal.map((d) => [`${prop}-${d}`, remValue])
+            );
+          } else if (dirVal) {
+            return { [`${prop}-${dirVal}`]: remValue };
+          } else {
+            return { [prop]: remValue };
+          }
+        }
+      );
+
+      // Arbitrary values
+      engine.addRule(
+        new RegExp(`^${prefix}${dirKey ? dirKey : ""}-\\[([^\\]]+)\\]$`),
+        (m, token) => {
+          const val = parseArbitrary(token) || "";
+          if (Array.isArray(dirVal)) {
+            return Object.fromEntries(dirVal.map((d) => [`${prop}-${d}`, val]));
+          } else if (dirVal) {
+            return { [`${prop}-${dirVal}`]: val };
+          } else {
+            return { [prop]: val };
+          }
+        }
+      );
+    });
   });
 
-  // ─────────────────────────────
-  // 📦 SPACING (margin / padding)
-  // ─────────────────────────────
-
-  // Margin (all sides)
-  engine.addRule(/^m-(\d+)$/, (m) => ({ margin: `${m![1]}px` }));
-  engine.addRule(/^m-\[(.+)\]$/, (m, token) => ({
-    margin: parseArbitrary(token) || "",
+  // Colors
+  engine.addRule(/^bg-([a-z0-9-]+)$/, (m) => ({
+    "background-color": opt.colors?.[m![1]] || m![1],
   }));
-
-  // Margin (x, y, top, right, bottom, left)
-  engine.addRule(/^mx-(\d+)$/, (m) => ({
-    "margin-left": `${m![1]}px`,
-    "margin-right": `${m![1]}px`,
+  engine.addRule(/^bg-\[([^\]]+)\]$/, (m) => ({
+    "background-color": parseArbitrary(m![0]) || m![1],
   }));
-  engine.addRule(/^my-(\d+)$/, (m) => ({
-    "margin-top": `${m![1]}px`,
-    "margin-bottom": `${m![1]}px`,
+  engine.addRule(/^text-([a-z0-9-]+)$/, (m) => ({
+    color: opt.colors?.[m![1]] || m![1],
   }));
-  engine.addRule(/^mt-(\d+)$/, (m) => ({ "margin-top": `${m![1]}px` }));
-  engine.addRule(/^mr-(\d+)$/, (m) => ({ "margin-right": `${m![1]}px` }));
-  engine.addRule(/^mb-(\d+)$/, (m) => ({ "margin-bottom": `${m![1]}px` }));
-  engine.addRule(/^ml-(\d+)$/, (m) => ({ "margin-left": `${m![1]}px` }));
-
-  // Padding (all sides)
-  engine.addRule(/^p-(\d+)$/, (m) => ({ padding: `${m![1]}px` }));
-  engine.addRule(/^p-\[(.+)\]$/, (m, token) => ({
-    padding: parseArbitrary(token) || "",
+  engine.addRule(/^text-\[([^\]]+)\]$/, (m) => ({
+    color: parseArbitrary(m![0]) || m![1],
   }));
-
-  // Padding (x, y, top, right, bottom, left)
-  engine.addRule(/^px-(\d+)$/, (m) => ({
-    "padding-left": `${m![1]}px`,
-    "padding-right": `${m![1]}px`,
+  engine.addRule(/^border-(\d+)$/, (m) => ({
+    border: `${+m![1] / baseRem}rem solid transparent`,
   }));
-  engine.addRule(/^py-(\d+)$/, (m) => ({
-    "padding-top": `${m![1]}px`,
-    "padding-bottom": `${m![1]}px`,
+  engine.addRule(/^border-(?!\d+$)([a-z0-9-]+)$/, (m) => ({
+    "border-color": opt.colors?.[m![1]] || m![1],
   }));
-  engine.addRule(/^pt-(\d+)$/, (m) => ({ "padding-top": `${m![1]}px` }));
-  engine.addRule(/^pr-(\d+)$/, (m) => ({ "padding-right": `${m![1]}px` }));
-  engine.addRule(/^pb-(\d+)$/, (m) => ({ "padding-bottom": `${m![1]}px` }));
-  engine.addRule(/^pl-(\d+)$/, (m) => ({ "padding-left": `${m![1]}px` }));
-
-  // ─────────────────────────────
-  // 🎨 COLORS
-  // ─────────────────────────────
-  engine.addRule(/^bg-([a-z0-9-]+)$/, (m) => {
-    const name = m![1];
-    if (opt.colors && opt.colors[name])
-      return { "background-color": opt.colors[name] };
-    return { "background-color": name }; // fallback to literal name
-  });
-  engine.addRule(
-    /^bg-\[(#(?:[0-9a-fA-F]{3,6})|[a-z]+|rgba?\([^\)]+\))\]$/,
-    (m, token) => {
-      return { "background-color": m![1] };
-    }
-  );
-  engine.addRule(/^bg-\[(.+)\]$/, (m, token) => ({
-    "background-color": parseArbitrary(token) || "",
-  }));
-
-  engine.addRule(/^text-([a-z0-9-]+)$/, (m) => {
-    const name = m![1];
-    if (opt.colors && opt.colors[name]) return { color: opt.colors[name] };
-    return { color: name }; // fallback to literal name
-  });
-  engine.addRule(
-    /^text-\[(#(?:[0-9a-fA-F]{3,6})|[a-z]+|rgba?\([^\)]+\))\]$/,
-    (m, token) => ({
-      color: parseArbitrary(token) || "",
-    })
-  );
-
-  engine.addRule(/^border-([a-z0-9-]+)$/, (m) => ({ "border-color": m![1] }));
-  engine.addRule(/^border-\[(.+)\]$/, (m, token) => ({
+  engine.addRule(/^border-\[([^\]]+)\]$/, (m, token) => ({
     "border-color": parseArbitrary(token) || "",
   }));
 
-  // ─────────────────────────────
-  // ✍️ TYPOGRAPHY
-  // ─────────────────────────────
+  // Typography
   engine.addRule(/^size-(\w+)$/, (m) => {
     const key = m![1];
-    if (opt?.fontSizes?.[key]) return { "font-size": opt.fontSizes[key] };
-    const n = parseInt(key, 10);
-    if (!isNaN(n)) return { "font-size": `${n}px` };
-    return null;
+    if (opt.fontSizes?.[key]) return { "font-size": opt.fontSizes[key] };
+    const n = parseFloat(key);
+    return !isNaN(n) ? { "font-size": `${+n / baseRem}rem` } : null;
   });
-  engine.addRule(/^size-\[(.+)px\]$/, (m, token) => {
-    // e.g., text-[20px]
-    return { "font-size": `${m![1]}px` };
-  });
-
-  engine.addRule(/^size-\[(.+)\]$/, (m, token) => ({
+  engine.addRule(/^size-\[(\d+(?:\.\d+)?)px\]$/, (m) => ({
+    "font-size": `${m![1]}px`,
+  }));
+  engine.addRule(/^size-\[([^\]]+)\]$/, (m, token) => ({
     "font-size": parseArbitrary(token) || "",
   }));
-
-  // Text align
   engine.addRule(/^text-(left|center|right|justify)$/, (m) => ({
     "text-align": m![1],
   }));
-
-  // Font weight
   engine.addRule(/^font-(bold|semibold|medium|light|thin)$/, (m) => ({
     "font-weight": m![1],
   }));
-  // Arbitrary font family and size (using square brackets) font-[sans-serif], text-[20px]
-  engine.addRule(/^font-fam-\[(.+)\]$/, (m, token) => ({
+  engine.addRule(/^font-\[([^\]]+)\]$/, (m, token) => ({
     "font-family": parseArbitrary(token) || "",
   }));
-
-  engine.addRule(/^leading-(\d+)$/, (m) => ({ "line-height": `${m![1]}px` }));
-  engine.addRule(/^leading-\[(.+)\]$/, (m, token) => ({
+  engine.addRule(/^leading-\[([^\]]+)\]$/, (m, token) => ({
     "line-height": parseArbitrary(token) || "",
   }));
-  engine.addRule(/^tracking-\[(.+)\]$/, (m, token) => ({
+  engine.addRule(/^tracking-\[([^\]]+)\]$/, (m, token) => ({
     "letter-spacing": parseArbitrary(token) || "",
   }));
   engine.addRule(/^underline$/, () => ({ "text-decoration": "underline" }));
@@ -170,19 +146,13 @@ export function createEngine(opt: VitePluginMiniCSSEngineOptions = {}) {
   }));
   engine.addRule(/^no-underline$/, () => ({ "text-decoration": "none" }));
 
-  // ─────────────────────────────
-  // 📐 FLEX & GRID
-  // ─────────────────────────────
+  // Flex & Grid
   engine.addRule(/^(flex|inline-flex|block|inline-block|grid)$/, (m) => ({
     display: m![1],
   }));
-
-  // Flex direction
   engine.addRule(/^flex-(row|col)$/, (m) => ({
-    "flex-direction": m![1] === "row" ? "row" : "column",
+    "flex-direction": m![1] === "col" ? "column" : "row",
   }));
-
-  // Justify content
   engine.addRule(/^justify-(start|center|end|between|around)$/, (m) => ({
     "justify-content":
       m![1] === "start"
@@ -195,8 +165,6 @@ export function createEngine(opt: VitePluginMiniCSSEngineOptions = {}) {
         ? "space-around"
         : "center",
   }));
-
-  // Align items
   engine.addRule(/^items-(start|center|end|stretch)$/, (m) => ({
     "align-items":
       m![1] === "start"
@@ -207,83 +175,56 @@ export function createEngine(opt: VitePluginMiniCSSEngineOptions = {}) {
         ? "stretch"
         : "center",
   }));
-
-  // Gap
-  engine.addRule(/^gap-(\d+)$/, (m) => ({ gap: `${m![1]}px` }));
-  engine.addRule(/^gap-x-(\d+)$/, (m) => ({ "column-gap": `${m![1]}px` }));
-  engine.addRule(/^gap-y-(\d+)$/, (m) => ({ "row-gap": `${m![1]}px` }));
-
-  // Grid templates
+  // Grid columns
   engine.addRule(/^grid-cols-(\d+)$/, (m) => ({
     "grid-template-columns": `repeat(${m![1]}, minmax(0, 1fr))`,
   }));
+  engine.addRule(/^grid-cols-\[([^\]]+)\]$/, (m, token) => ({
+    "grid-template-columns": parseArbitrary(token) || "",
+  }));
+
+  // Grid rows
   engine.addRule(/^grid-rows-(\d+)$/, (m) => ({
     "grid-template-rows": `repeat(${m![1]}, minmax(0, 1fr))`,
   }));
-
-  // ─────────────────────────────
-  // 📏 SIZING
-  // ─────────────────────────────
-  engine.addRule(/^w-(\d+)$/, (m) => ({ width: `${m![1]}px` }));
-  engine.addRule(/^w-\[(.+)\]$/, (m, token) => ({
-    width: parseArbitrary(token) || "",
-  }));
-  engine.addRule(/^h-(\d+)$/, (m) => ({ height: `${m![1]}px` }));
-  engine.addRule(/^h-\[(.+)\]$/, (m, token) => ({
-    height: parseArbitrary(token) || "",
-  }));
-  engine.addRule(/^min-w-(\d+)$/, (m) => ({ "min-width": `${m![1]}px` }));
-  engine.addRule(/^max-w-(\d+)$/, (m) => ({ "max-width": `${m![1]}px` }));
-
-  // ─────────────────────────────
-  // 🟦 BORDERS & RADIUS
-  // ─────────────────────────────
-  engine.addRule(/^border$/, () => ({ borderWidth: "1px" }));
-  engine.addRule(/^border-(\d+)$/, (m) => ({
-    borderWidth: `${m![1]}px`,
+  engine.addRule(/^grid-rows-\[([^\]]+)\]$/, (m, token) => ({
+    "grid-template-rows": parseArbitrary(token) || "",
   }));
 
-  // border color
-  engine.addRule(/^border-(.+)$/, (m) => {
-    const color = m![1];
-    if (opt.colors && opt.colors[color]) {
-      return { borderColor: opt.colors[color] };
-    }
-    return { borderColor: color }; // fallback to literal name
-  });
+  //gaps
+  engine.addRule(/^gap-(\d+)$/, (m) => ({ gap: `${+m![1] / baseRem}rem` }));
+  engine.addRule(/^gap-\[([^\]]+)\]$/, (m) => ({ gap: m![1] }));
 
-  //radius
+  // Borders & Radius
   engine.addRule(/^rounded$/, () => ({ "border-radius": "4px" }));
-  engine.addRule(/^rounded-(sm|md|lg|xl)$/, (m) => {
-    const map: Record<string, string> = opt.borderRadius || {
-      sm: "4px",
-      md: "8px",
-      lg: "12px",
-      xl: "16px",
+  engine.addRule(/^rounded-(sm|md|lg|xl|full)$/, (m) => {
+    const map = opt.borderRadius || {
+      sm: "0.25rem",
+      md: "0.5rem",
+      lg: "0.75rem",
+      xl: "1rem",
+      full: "9999px",
     };
+
     return { "border-radius": map[m![1]] };
   });
-  engine.addRule(/^rounded-\[(.+)\]$/, (m, token) => ({
+  engine.addRule(/^rounded-\[([^\]]+)\]$/, (m, token) => ({
     "border-radius": parseArbitrary(token) || "",
   }));
 
-  // ─────────────────────────────
-  // 📌 POSITIONING
-  // ─────────────────────────────
+  // Positioning
   engine.addRule(/^(absolute|relative|fixed|sticky)$/, (m) => ({
     position: m![1],
   }));
   engine.addRule(/^(top|right|bottom|left)-(\d+)$/, (m) => ({
     [m![1]]: `${m![2]}px`,
   }));
-  engine.addRule(/^(top|right|bottom|left)-\[(.+)\]$/, (m, token) => ({
+  engine.addRule(/^(top|right|bottom|left)-\[([^\]]+)\]$/, (m, token) => ({
     [m![1]]: parseArbitrary(token) || "",
   }));
   engine.addRule(/^z-(\d+)$/, (m) => ({ "z-index": m![1] }));
 
-  // ─────────────────────────────
-  // 🌟 OTHER UTILITIES
-  // ─────────────────────────────
+  // Other utilities
   engine.addRule(/^opacity-(\d+)$/, (m) => ({ opacity: `${+m![1] / 100}` }));
   engine.addRule(/^cursor-(pointer|default|not-allowed)$/, (m) => ({
     cursor: m![1],
@@ -297,32 +238,35 @@ export function createEngine(opt: VitePluginMiniCSSEngineOptions = {}) {
   engine.addRule(/^shadow-lg$/, () => ({
     "box-shadow": "0 4px 6px rgba(0,0,0,0.1)",
   }));
-  engine.addRule(/^shadow-\[(.+)\]$/, (m, token) => ({
+  engine.addRule(/^shadow-\[([^\]]+)\]$/, (m, token) => ({
     "box-shadow": parseArbitrary(token) || "",
   }));
 
-  // ─────────────────────────────
-  // 📱 VARIANTS
-  // ─────────────────────────────
+  // Variants
   engine.addVariant({
     prefix: "hover:",
-    wrap: (css) => css.replace(/^([^{\s]+)\s*{/, "$1:hover{"),
+    wrap: (css) => css.replace(/^(\.[^{\s]+)(\s*{)/, "$1:hover$2"),
   });
-
   engine.addVariant({
     prefix: "focus:",
-    wrap: (css) => css.replace(/^([^{\s]+)\s*{/, "$1:focus{"),
+    wrap: (css) => css.replace(/^(\.[^{\s]+)(\s*{)/, "$1:focus$2"),
   });
-
-  Object.entries(opt.customVariants || { dark: "" }).forEach(
-    ([prefix, selector]) => {
-      engine.addVariant({
-        prefix: `${prefix}:`,
-        wrap: (css) => css.replace(/^(\.[^{\s]+)\s*{/, `${selector} $1{`),
-      });
-    }
+  (opt.customVariants || []).forEach(({ prefix, wrap }) =>
+    engine.addVariant({ prefix, wrap })
   );
 
+  // Theme variants
+  if (opt.themes) {
+    Object.entries(opt.themes).forEach(([themeName, selector]) => {
+      const cls = selector.startsWith(".") ? selector : `.${selector}`; // add dot if missing
+      engine.addVariant({
+        prefix: `${themeName}:`,
+        wrap: (css) => css.replace(/^(\.[^{\s]+)(\s*{)/, `${cls} $1$2`),
+      });
+    });
+  }
+
+  // Responsive breakpoints
   Object.entries(breakpoints).forEach(([prefix, minWidth]) =>
     engine.addMediaQuery(prefix, minWidth)
   );
