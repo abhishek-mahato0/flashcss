@@ -89,6 +89,88 @@ export function createEngine(opt: VitePluginMiniCSSEngineOptions = {}) {
     });
   });
 
+  //rule for width and height
+  engine.addRule(
+    /^(w|h|min-w|max-w|min-h|max-h)-(full|screen|\d+|\[.+\])$/,
+    (m) => {
+      const type = m![1]; // w, h, min-w, max-w, min-h, max-h
+      const value = m![2];
+
+      let prop;
+
+      // Map type to CSS property
+      switch (type) {
+        case "w":
+          prop = "width";
+          break;
+        case "h":
+          prop = "height";
+          break;
+        case "min-w":
+          prop = "min-width";
+          break;
+        case "max-w":
+          prop = "max-width";
+          break;
+        case "min-h":
+          prop = "min-height";
+          break;
+        case "max-h":
+          prop = "max-height";
+          break;
+        default:
+          return {};
+      }
+
+      // Numeric scale (e.g., w-2 → 0.5rem)
+      if (/^\d+$/.test(value)) {
+        return { [prop]: `${Number(value) * 0.25}rem` };
+      }
+
+      // Arbitrary value (e.g., w-[20px])
+      if (/^\[.+\]$/.test(value)) {
+        return { [prop]: value.slice(1, -1) }; // remove brackets
+      }
+
+      // Keywords
+      if (value === "full") return { [prop]: "100%" };
+      if (value === "screen") {
+        if (prop.includes("Width")) return { [prop]: "100vw" };
+        if (prop.includes("Height")) return { [prop]: "100vh" };
+      }
+
+      return {}; // fallback
+    }
+  );
+  // Font styles
+  engine.addRule(
+    /^(italic|not-italic|underline|line-through|dec-none)$/,
+    (m) => {
+      const value = m![1] || "dec-none";
+      let css = {};
+      switch (value) {
+        case "italic":
+          css = { "font-style": "italic" };
+          break;
+        case "not-italic":
+          css = { "font-style": "normal" };
+          break;
+        case "underline":
+          css = { "text-decoration": "underline" };
+          break;
+        case "line-through":
+          css = { "text-decoration": "line-through" };
+          break;
+        case "dec-none":
+          css = { "text-decoration": "none" };
+          break;
+        default:
+          css = { "text-decoration": "none" };
+      }
+      return css;
+    }
+  );
+
   // Colors
   engine.addRule(/^bg-([a-z0-9-]+)$/, (m) => ({
     "background-color": opt.colors?.[m![1]] || m![1],
@@ -96,6 +178,7 @@ export function createEngine(opt: VitePluginMiniCSSEngineOptions = {}) {
   engine.addRule(/^bg-\[([^\]]+)\]$/, (m) => ({
     "background-color": parseArbitrary(m![0]) || m![1],
   }));
+
   engine.addRule(/^text-([a-z0-9-]+)$/, (m) => ({
     color: opt.colors?.[m![1]] || m![1],
   }));
@@ -140,11 +223,6 @@ export function createEngine(opt: VitePluginMiniCSSEngineOptions = {}) {
   engine.addRule(/^tracking-\[([^\]]+)\]$/, (m, token) => ({
     "letter-spacing": parseArbitrary(token) || "",
   }));
-  engine.addRule(/^underline$/, () => ({ "text-decoration": "underline" }));
-  engine.addRule(/^line-through$/, () => ({
-    "text-decoration": "line-through",
-  }));
-  engine.addRule(/^no-underline$/, () => ({ "text-decoration": "none" }));
 
   // Flex & Grid
   engine.addRule(/^(flex|inline-flex|block|inline-block|grid)$/, (m) => ({
@@ -229,9 +307,28 @@ export function createEngine(opt: VitePluginMiniCSSEngineOptions = {}) {
   engine.addRule(/^cursor-(pointer|default|not-allowed)$/, (m) => ({
     cursor: m![1],
   }));
-  engine.addRule(/^overflow-(hidden|auto|scroll)$/, (m) => ({
+  engine.addRule(/^overflow-(hidden|auto|scroll|clip|visible)$/, (m) => ({
     overflow: m![1],
   }));
+  engine.addRule(
+    /^overflow(?:-(x|y))?-(hidden|auto|scroll|clip|visible)$/,
+    (m) => {
+      const axis = m![1];
+      const val = m![2];
+
+      const result: Record<string, string> = {};
+      if (!axis) {
+        result.overflow = val;
+      } else if (axis === "x") {
+        result["overflow-x"] = val;
+      } else {
+        result["overflow-y"] = val;
+      }
+
+      return result;
+    }
+  );
+
   engine.addRule(/^shadow$/, () => ({
     "box-shadow": "0 1px 2px rgba(0,0,0,0.1)",
   }));
@@ -251,6 +348,7 @@ export function createEngine(opt: VitePluginMiniCSSEngineOptions = {}) {
     prefix: "focus:",
     wrap: (css) => css.replace(/^(\.[^{\s]+)(\s*{)/, "$1:focus$2"),
   });
+
   (opt.customVariants || []).forEach(({ prefix, wrap }) =>
     engine.addVariant({ prefix, wrap })
   );

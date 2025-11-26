@@ -53,7 +53,7 @@ export default function flashCss(
 ): Plugin {
   const engine = createEngine(_opts);
   const generatedClasses = new Set<string>();
-  const outputPath = _opts?.outputpath || "assets/custom.css";
+  const outputPath = _opts?.outputpath || "assets/flash.css";
   let generatedCss = "";
   const oldFileContent = new Map<string, string>();
 
@@ -111,7 +111,7 @@ export default function flashCss(
         if (!newCss) return [];
 
         // Invalidate module to trigger reload
-        const module = server.moduleGraph.getModuleById("/@custom.css");
+        const module = server.moduleGraph.getModuleById("/@flash.css");
         if (module) {
           server.moduleGraph.invalidateModule(module);
         }
@@ -121,8 +121,8 @@ export default function flashCss(
           updates: [
             {
               type: "js-update", // virtual module loaded via JS
-              path: "/@custom.css",
-              acceptedPath: "/@custom.css",
+              path: "/@flash.css",
+              acceptedPath: "/@flash.css",
               timestamp: Date.now(),
             },
           ],
@@ -130,10 +130,10 @@ export default function flashCss(
       });
     },
     resolveId(id) {
-      if (id === "/@custom.css") return id;
+      if (id === "/@flash.css") return id;
     },
     load(id) {
-      if (id === "/@custom.css") {
+      if (id === "/@flash.css") {
         return generatedCss;
       }
     },

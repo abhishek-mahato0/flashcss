@@ -42,7 +42,7 @@ export class MiniCSSEngine {
     this.addVariant({
       prefix: prefix + ":",
       wrap: (cssBlock: string) => {
-        return `@media (min-width: ${minWidth}) {\n${cssBlock}\n}`;
+        return `@media (min-width: ${minWidth}px) {\n${cssBlock}\n}`;
       },
     });
   }
