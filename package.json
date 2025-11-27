@@ -1,7 +1,7 @@
 {
   "name": "flashcss-vite",
-  "version": "0.2.1",
-  "description": "A super fast custom CSS engine plugin for Vite",
+  "version": "0.2.2",
+  "description": "A super fast custom CSS engine plugin for Vite. Write your own rules and generate minimal CSS for your project.",
   "main": "dist/js/index.js",
   "types": "dist/types/index.d.ts",
   "files": [
@@ -16,7 +16,10 @@
     "plugin",
     "css",
     "tailwind-alternative",
-    "mini-css"
+    "mini-css",
+    "flashcss",
+    "flashcss-vite",
+    "flashcss-plugin"
   ],
   "author": "Abhishek Mahato",
   "license": "MIT",

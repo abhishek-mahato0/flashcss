@@ -69,11 +69,11 @@ export default defineConfig({
       ],
       preDefinedClasses: ["size-[30px]", "text-primary"], // optional
       breakpoints: {
-        sm: "640px",
-        md: "768px",
-        lg: "1024px",
-        xl: "1280px",
-        "2xl": "1536px",
+        sm: 640,
+        md: 768,
+        lg: 1024,
+        xl: 1280,
+        2xl: 1536,
       },
       colors: {
         primary: "#3490dc",
@@ -436,7 +436,7 @@ Notes
 
 - HMR works automatically in development.
 
-- Production builds emit a single CSS file (flashcss.css).
+- Production builds embeds generated css in index file.
 
 - You can extend colors, font sizes, and breakpoints in the plugin config.
 

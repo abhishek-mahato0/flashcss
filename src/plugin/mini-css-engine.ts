@@ -13,7 +13,7 @@ import { createEngine } from "../core/rules.js";
 import { fileURLToPath } from "url";
 
 type BreakPointConfig = {
-  [key: string]: number; // key: prefix, value: min-width px
+  [key: string]: number;
 };
 
 type VitePluginMiniCSSEngineOptions = {
@@ -71,16 +71,14 @@ export default function flashCss(
   }
 
   return {
-    name: "vite-plugin-mini-css-engine",
+    name: "flash-css-vite-plugin",
     buildStart() {
       if (typeof process !== "undefined") {
         try {
           const classes = extractClasses();
           generateFor([...classes, ...(_opts?.preDefinedClasses || [])]);
         } catch (e) {
-          this.warn(
-            "mini-css-engine: buildStart extraction failed: " + String(e)
-          );
+          this.warn("flashcss: buildStart extraction failed: " + String(e));
         }
       }
     },
@@ -136,28 +134,6 @@ export default function flashCss(
       if (id === "/@flash.css") {
         return generatedCss;
       }
-    },
-    generateBundle(_options, bundle) {
-      if (!generatedCss) return;
-      const outDir = path.resolve(
-        process.cwd(),
-        "dist",
-        path.dirname(outputPath)
-      );
-      if (!fs.existsSync(outDir)) fs.mkdirSync(outDir, { recursive: true });
-
-      // Write CSS file
-      fs.writeFileSync(
-        path.resolve(process.cwd(), "dist", outputPath),
-        generatedCss
-      );
-      this.warn(`✅ Generated CSS: ${outputPath}`);
-    },
-    transformIndexHtml(html) {
-      return html.replace(
-        "</head>",
-        `  <link rel="stylesheet" href="/${outputPath}">\n</head>`
-      );
     },
   };
 }

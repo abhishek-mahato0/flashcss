@@ -253,6 +253,7 @@ export function createEngine(opt: VitePluginMiniCSSEngineOptions = {}) {
         ? "stretch"
         : "center",
   }));
+
   // Grid columns
   engine.addRule(/^grid-cols-(\d+)$/, (m) => ({
     "grid-template-columns": `repeat(${m![1]}, minmax(0, 1fr))`,
