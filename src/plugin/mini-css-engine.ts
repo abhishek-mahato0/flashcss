@@ -11,6 +11,7 @@ import {
 } from "../core/utils.js";
 import { createEngine } from "../core/rules.js";
 import { fileURLToPath } from "url";
+import { LRUCache } from "../core/LRU.js";
 
 type BreakPointConfig = {
   [key: string]: number;
@@ -31,6 +32,7 @@ type VitePluginMiniCSSEngineOptions = {
     wrap: (cssBlock: string) => string;
   }>;
   outputpath?: string;
+  cacheSize?: number;
 };
 
 type CSSObject = Record<string, string>;
@@ -55,7 +57,7 @@ export default function flashCss(
   const generatedClasses = new Set<string>();
   const outputPath = _opts?.outputpath || "assets/flash.css";
   let generatedCss = "";
-  const oldFileContent = new Map<string, string>();
+  const oldFileContent = new LRUCache<string, string>(_opts?.cacheSize || 20);
 
   // Helper to (re)generate CSS from a list of classes
   function generateFor(classes: string[]) {

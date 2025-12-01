@@ -125,6 +125,14 @@ Or use inline styles:
 <div style={{ fontSize: `${size}px` }}>Dynamic text</div>
 ```
 
+for JS template literals class.
+
+```bash
+<div classname={`true? "text-red":"text-black"`}>Flash Css</div>
+```
+
+in this condition CSS for both "text-red" and "text-black" will be generated.
+
 ## Typography
 
 ### Font Size – size-\*

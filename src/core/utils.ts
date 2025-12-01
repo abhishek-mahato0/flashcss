@@ -11,7 +11,25 @@ import { glob } from "glob";
 const CLASS_REGEX = /(?:class|className|:class)\s*=\s*["'`]([^"'`]+)["'`]/g;
 
 // also capture simple template literal forms: className={`p-${size}`} -> we capture inner string segments only
-const TEMPLATE_REGEX = /class(Name)?\s*=\s*{?\s*`([^`]+)`\s*}?/g;
+const TEMPLATE_REGEX = /(?:class|className)\s*=\s*\{\s*`([^`]+)`\s*\}/g;
+
+// Regex to match JS expressions containing class or className attributes
+const JS_EXPR_CLASS_REGEX = /(?:class|className)\s*=\s*\{(.*?)\}/g;
+
+export function extractConditionalClasses(expr: string): string[] {
+  const classes = [];
+
+  //to match the pattern: something ? "class1" : "class2"
+  const ternaryRegex = /\?\s*["'`]([^"'`]+)["'`]\s*:\s*["'`]([^"'`]+)["'`]/g;
+
+  let match;
+  while ((match = ternaryRegex.exec(expr)) !== null) {
+    const [, afterQuestion, afterColon] = match;
+    classes.push(afterQuestion.trim());
+    classes.push(afterColon.trim());
+  }
+  return classes;
+}
 
 export function extractClasses(): string[] {
   const files = glob.sync("src/**/*.{tsx,jsx,js,ts,html}");
@@ -25,7 +43,12 @@ export function extractClasses(): string[] {
         classes.push(...m[1].split(/\s+/).filter(Boolean));
       }
       while ((m = TEMPLATE_REGEX.exec(content)) !== null) {
-        classes.push(...m[2].split(/\s+/).filter(Boolean));
+        const templateClasses = extractConditionalClasses(m[1]);
+        classes.push(...templateClasses.filter(Boolean));
+      }
+      while ((m = JS_EXPR_CLASS_REGEX.exec(content)) !== null) {
+        const conditionalClasses = extractConditionalClasses(m[1]);
+        classes.push(...conditionalClasses.filter(Boolean));
       }
     } catch {
       // skip unreadable files
@@ -42,7 +65,12 @@ export function extractClassesFromString(input: string): string[] {
     classes.push(...m[1].split(/\s+/).filter(Boolean));
   }
   while ((m = TEMPLATE_REGEX.exec(input)) !== null) {
-    classes.push(...m[2].split(/\s+/).filter(Boolean));
+    const templateClasses = extractConditionalClasses(m[1]);
+    classes.push(...templateClasses.filter(Boolean));
+  }
+  while ((m = JS_EXPR_CLASS_REGEX.exec(input)) !== null) {
+    const conditionalClasses = extractConditionalClasses(m[1]);
+    classes.push(...conditionalClasses.filter(Boolean));
   }
   return Array.from(new Set(classes));
 }
