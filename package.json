@@ -1,6 +1,6 @@
 {
   "name": "flashcss-vite",
-  "version": "0.2.3",
+  "version": "0.2.5",
   "description": "A super fast custom CSS engine plugin for Vite. Write your own rules and generate minimal CSS for your project.",
   "main": "dist/js/index.js",
   "types": "dist/types/index.d.ts",
@@ -32,7 +32,6 @@
   },
   "dependencies": {
     "diff": "^8.0.2",
-    "flashcss-vite": "^0.1.8",
     "glob": "^11.0.3"
   },
   "exports": {
